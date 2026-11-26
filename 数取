@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タッチカウンター</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #f9f9f9;
+        }
+        #counterDisplay {
+            font-size: 72px;
+            font-weight: bold;
+            color: #333;
+            margin: 30px 0;
+        }
+        .btn-group {
+            margin-top: 20px;
+        }
+        button {
+            font-size: 18px;
+            padding: 15px 30px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #clickBtn { background-color: #007BFF; font-size: 24px; padding: 20px 50px; }
+        #clickBtn:hover { background-color: #0056b3; }
+        
+        #downloadBtn { background-color: #28a745; }
+        #downloadBtn:hover { background-color: #1e7e34; }
+        
+        #resetBtn { background-color: #dc3545; }
+        #resetBtn:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+
+    <h1>タッチカウンター</h1>
+    <div id="counterDisplay">0</div>
+    
+    <button id="clickBtn">クリック</button>
+
+    <div class="btn-group">
+        <button id="downloadBtn">CSVをダウンロード</button>
+        <button id="resetBtn">リセット</button>
+    </div>
+
+    <script>
+        // ブラウザの保存領域から過去のデータを読み込む（なければ初期化）
+        let count = localStorage.getItem('touchCount') ? parseInt(localStorage.getItem('touchCount')) : 0;
+        let historyData = localStorage.getItem('touchHistory') ? JSON.parse(localStorage.getItem('touchHistory')) : [];
+
+        const counterDisplay = document.getElementById('counterDisplay');
+        counterDisplay.innerText = count;
+
+        // クリックボタンの処理
+        document.getElementById('clickBtn').addEventListener('click', () => {
+            count++;
+            counterDisplay.innerText = count; // 画面を更新
+
+            // クリックされた日時を記録
+            const now = new Date().toLocaleString('ja-JP');
+            historyData.push({ time: now, currentCount: count });
+
+            // ブラウザの内部ストレージに自動保存（リロードしても消えないようにする）
+            localStorage.setItem('touchCount', count);
+            localStorage.setItem('touchHistory', JSON.stringify(historyData));
+        });
+
+        // CSVダウンロードボタンの処理
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (historyData.length === 0) {
+                alert('出力するデータがありません。まずはクリックしてください。');
+                return;
+            }
+
+            // CSVのヘッダーを作成
+            let csvContent = "クリック日時,累計カウント数\n";
+            
+            // 履歴データをCSVフォーマットに変換
+            historyData.forEach(row => {
+                csvContent += `${row.time},${row.currentCount}\n`;
+            });
+
+            // Excelで文字化けしないようにBOM（Byte Order Mark）を付与
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            // ダウンロード用のリンクを擬似的に作成してクリックさせる
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `counter_data_${new Date().getTime()}.csv`;
+            a.click();
+            
+            URL.revokeObjectURL(url); // メモリ解放
+        });
+
+        // リセットボタンの処理
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if(confirm('記録をすべてリセットしてもよろしいですか？')) {
+                count = 0;
+                historyData = [];
+                counterDisplay.innerText = count;
+                localStorage.removeItem('touchCount');
+                localStorage.removeItem('touchHistory');
+            }
+        });
+    </script>
+</body>
+</html>
